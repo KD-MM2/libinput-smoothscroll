@@ -1,14 +1,89 @@
-local SETTINGS = {
-    step_size_px = 90.0,
-    animation_time_ms = 360.0,
-    acceleration_delta_ms = 70.0,
-    acceleration_scale = 7.0,
-    acceleration_ramp_k = 0.55,
-    max_step_scale = 7.0,
-    max_backlog_px = 3600.0,
-    easing = "easeOutCubic",
-    timer_interval_ms = 8.0,
+local PRESETS = {
+    custom = {
+        step_size_px = 90.0,
+        pulse_scale = 1.0,
+        animation_time_ms = 360.0,
+        acceleration_delta_ms = 70.0,
+        acceleration_scale = 7.0,
+        acceleration_ramp_k = 0.55,
+        max_step_scale = 7.0,
+        max_backlog_px = 3600.0,
+        easing = "easeOutCubic",
+        timer_interval_ms = 8.0,
+        enabled = true,
+        reverse_direction = false,
+        enable_horizontal = true,
+        debug = false,
+    },
+    normal = {
+        step_size_px = 90.0,
+        pulse_scale = 2.5,
+        animation_time_ms = 320.0,
+        acceleration_delta_ms = 80.0,
+        acceleration_scale = 4.0,
+        acceleration_ramp_k = 0.45,
+        max_step_scale = 4.0,
+        max_backlog_px = 2600.0,
+        easing = "easeOutCubic",
+        timer_interval_ms = 8.0,
+        enabled = true,
+        reverse_direction = false,
+        enable_horizontal = true,
+        debug = false,
+    },
+    aggressive = {
+        step_size_px = 90.0,
+        pulse_scale = 4.0,
+        animation_time_ms = 360.0,
+        acceleration_delta_ms = 70.0,
+        acceleration_scale = 7.0,
+        acceleration_ramp_k = 0.55,
+        max_step_scale = 7.0,
+        max_backlog_px = 3600.0,
+        easing = "easeOutCubic",
+        timer_interval_ms = 8.0,
+        enabled = true,
+        reverse_direction = false,
+        enable_horizontal = true,
+        debug = false,
+    },
+    precision = {
+        step_size_px = 70.0,
+        pulse_scale = 1.8,
+        animation_time_ms = 260.0,
+        acceleration_delta_ms = 90.0,
+        acceleration_scale = 3.0,
+        acceleration_ramp_k = 0.35,
+        max_step_scale = 3.0,
+        max_backlog_px = 2000.0,
+        easing = "easeOutCubic",
+        timer_interval_ms = 8.0,
+        enabled = true,
+        reverse_direction = false,
+        enable_horizontal = true,
+        debug = false,
+    },
 }
+
+PRESETS.aggresive = PRESETS.aggressive
+
+local ACTIVE_PRESET = "custom"
+
+local function clone_settings(source)
+    local out = {}
+    for key, value in pairs(source) do
+        out[key] = value
+    end
+    return out
+end
+
+local SETTINGS = clone_settings(PRESETS[ACTIVE_PRESET] or PRESETS.custom)
+
+local function plugin_log_debug(message)
+    if SETTINGS.debug then
+        libinput:log_debug(message)
+    end
+end
 
 local WHEEL_UNIT = 120.0
 local EPSILON = 0.000001
@@ -254,6 +329,10 @@ local function is_scroll_usage(usage)
 end
 
 local function handle_frame(device, frame, timestamp)
+    if not SETTINGS.enabled then
+        return nil
+    end
+
     local state = devices[device]
     if not state then
         return nil
@@ -262,27 +341,32 @@ local function handle_frame(device, frame, timestamp)
     local seen_scroll = false
     local seen_v_hires = false
     local seen_h_hires = false
+    local saw_v = false
+    local saw_h = false
 
     local hires_v = 0
     local hires_h = 0
     local detent_v = 0
     local detent_h = 0
-
     for _, event in ipairs(frame) do
         local usage = event.usage
         if usage == REL_WHEEL_HI_RES then
             seen_scroll = true
             seen_v_hires = true
+            saw_v = true
             hires_v = hires_v + event.value
         elseif usage == REL_H_WHEEL_HI_RES then
             seen_scroll = true
             seen_h_hires = true
+            saw_h = true
             hires_h = hires_h + event.value
         elseif usage == REL_WHEEL then
             seen_scroll = true
+            saw_v = true
             detent_v = detent_v + event.value
         elseif usage == REL_H_WHEEL then
             seen_scroll = true
+            saw_h = true
             detent_h = detent_h + event.value
         end
     end
@@ -292,7 +376,11 @@ local function handle_frame(device, frame, timestamp)
     end
 
     local steps_v = seen_v_hires and (hires_v / WHEEL_UNIT) or detent_v
-    local steps_h = seen_h_hires and (hires_h / WHEEL_UNIT) or detent_h
+    local steps_h = SETTINGS.enable_horizontal and (seen_h_hires and (hires_h / WHEEL_UNIT) or detent_h) or 0
+
+    local direction_sign = SETTINGS.reverse_direction and -1.0 or 1.0
+    steps_v = steps_v * direction_sign * SETTINGS.pulse_scale
+    steps_h = steps_h * direction_sign * SETTINGS.pulse_scale
 
     if steps_v ~= 0 or steps_h ~= 0 then
         local scale = compute_scale(state, timestamp)
@@ -302,7 +390,18 @@ local function handle_frame(device, frame, timestamp)
 
     local out = {}
     for _, event in ipairs(frame) do
-        if not is_scroll_usage(event.usage) then
+        local usage = event.usage
+        local is_v_scroll = usage == REL_WHEEL or usage == REL_WHEEL_HI_RES
+        local is_h_scroll = usage == REL_H_WHEEL or usage == REL_H_WHEEL_HI_RES
+
+        local drop_event = false
+        if is_v_scroll and saw_v then
+            drop_event = true
+        elseif is_h_scroll and SETTINGS.enable_horizontal and saw_h then
+            drop_event = true
+        end
+
+        if not drop_event then
             out[#out + 1] = event
         end
     end
@@ -322,7 +421,7 @@ local function new_device(device)
     local has_rel_hwheel_hires = REL_H_WHEEL_HI_RES and usages[REL_H_WHEEL_HI_RES] and true or false
 
     if not (has_rel_wheel or has_rel_wheel_hires or has_rel_hwheel or has_rel_hwheel_hires) then
-        libinput:log_debug("smooth-scroll skip (no wheel axes): " .. device:name())
+        plugin_log_debug("smooth-scroll skip (no wheel axes): " .. device:name())
         return
     end
 

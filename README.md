@@ -27,14 +27,46 @@ Per-device state:
 
 ## Current settings (hardcoded)
 
+Preset selection is now in code via:
+- `PRESETS` table
+- `ACTIVE_PRESET` (e.g. `"custom"`, `"normal"`, `"aggressive"`, `"precision"`)
+
+Note: `"aggresive"` alias is also accepted in code.
+
 In `smooth_scroll.lua`:
 - `step_size_px = 90`
+- `pulse_scale = 4.0`
 - `animation_time_ms = 360`
 - `acceleration_delta_ms = 70`
 - `acceleration_scale = 7.0`
 - `max_step_scale = 7.0`
 - `max_backlog_px = 3600`
 - `easing = "easeOutCubic"` (`"linear"` is also supported)
+- `enabled = true`
+- `reverse_direction = false`
+- `enable_horizontal = true`
+- `debug = false`
+
+Quick behavior notes:
+- `enabled`: `false` means plugin is effectively pass-through (no smoothing/acceleration applied).
+- `reverse_direction`: flips both vertical and horizontal scroll direction.
+- `enable_horizontal`: when `false`, horizontal wheel events are passed through unchanged (only vertical smoothing remains active).
+- `debug`: when `true`, plugin emits extra debug logs (e.g. devices skipped for missing wheel axes).
+
+## Recommended presets
+
+Use these as starting points by editing the `SETTINGS` table in `smooth_scroll.lua`.
+
+| Preset | step_size_px | pulse_scale | animation_time_ms | acceleration_delta_ms | acceleration_scale | acceleration_ramp_k | max_step_scale | max_backlog_px |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Normal | 90 | 2.5 | 320 | 80 | 4.0 | 0.45 | 4.0 | 2600 |
+| Aggressive | 90 | 4.0 | 360 | 70 | 7.0 | 0.55 | 7.0 | 3600 |
+| Precision | 70 | 1.8 | 260 | 90 | 3.0 | 0.35 | 3.0 | 2000 |
+
+Tips:
+- Start with `Normal`, then adjust only one parameter at a time.
+- If scrolling feels too jumpy, lower `pulse_scale` and/or `acceleration_scale`.
+- If scrolling feels too slow, raise `pulse_scale` before increasing acceleration.
 
 ## Acceleration
 

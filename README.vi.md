@@ -27,14 +27,46 @@ Mỗi device có state:
 
 ## Settings hiện tại (hardcoded)
 
+Hiện đã có chọn preset trực tiếp trong code qua:
+- bảng `PRESETS`
+- `ACTIVE_PRESET` (ví dụ: `"custom"`, `"normal"`, `"aggressive"`, `"precision"`)
+
+Lưu ý: trong code có alias `"aggresive"`.
+
 Trong `smooth_scroll.lua`:
 - `step_size_px = 90`
+- `pulse_scale = 4.0`
 - `animation_time_ms = 360`
 - `acceleration_delta_ms = 70`
 - `acceleration_scale = 7.0`
 - `max_step_scale = 7.0`
 - `max_backlog_px = 3600`
 - `easing = "easeOutCubic"` (`"linear"` cũng hỗ trợ)
+- `enabled = true`
+- `reverse_direction = false`
+- `enable_horizontal = true`
+- `debug = false`
+
+Ghi chú nhanh về hành vi:
+- `enabled`: nếu đặt `false` thì plugin đi theo kiểu pass-through (không áp smooth/acceleration).
+- `reverse_direction`: đảo chiều cuộn cho cả trục dọc và ngang.
+- `enable_horizontal`: nếu đặt `false` thì cuộn ngang được pass-through nguyên bản (chỉ còn smooth cho trục dọc).
+- `debug`: nếu đặt `true` plugin sẽ in thêm log debug (ví dụ các device bị skip do thiếu wheel axes).
+
+## Bảng preset gợi ý
+
+Dùng các preset này làm điểm bắt đầu bằng cách sửa bảng `SETTINGS` trong `smooth_scroll.lua`.
+
+| Preset | step_size_px | pulse_scale | animation_time_ms | acceleration_delta_ms | acceleration_scale | acceleration_ramp_k | max_step_scale | max_backlog_px |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Normal | 90 | 2.5 | 320 | 80 | 4.0 | 0.45 | 4.0 | 2600 |
+| Aggressive | 90 | 4.0 | 360 | 70 | 7.0 | 0.55 | 7.0 | 3600 |
+| Precision | 70 | 1.8 | 260 | 90 | 3.0 | 0.35 | 3.0 | 2000 |
+
+Mẹo chỉnh nhanh:
+- Bắt đầu từ `Normal`, rồi chỉnh từng tham số một.
+- Nếu cảm giác bị giật/nhảy, giảm `pulse_scale` và/hoặc `acceleration_scale`.
+- Nếu cảm giác quá chậm, tăng `pulse_scale` trước khi tăng acceleration.
 
 ## Acceleration
 
