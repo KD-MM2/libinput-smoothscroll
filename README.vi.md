@@ -165,3 +165,13 @@ Nếu không thấy `REL_WHEEL` hoặc `REL_WHEEL_HI_RES`, smooth-scroll kiểu 
 - API evdev không có đơn vị pixel thật, chỉ có wheel units integer.
 - Smooth ở đây là phát nhiều `HI_RES` events theo thời gian, không phải gửi pixel delta trực tiếp.
 - Với thiết bị không có `REL_*_HI_RES`, smooth bị giới hạn vì chỉ có discrete detent events.
+
+## Next development
+
+Hướng phát triển tiếp theo là tìm và hoàn thiện một giải pháp GUI thực dụng để cấu hình dễ hơn.
+
+Định hướng dự kiến:
+- Có giao diện nhẹ để chỉnh preset mà không cần sửa tay `smooth_scroll.lua`.
+- Hỗ trợ chuyển profile nhanh (`custom`, `normal`, `aggressive`, `precision`).
+- Có hướng dẫn apply an toàn và kiểm tra hợp lệ cơ bản cho các tham số số.
+- Giữ phần logic plugin tối giản, ổn định; phần tiện dụng UX sẽ nằm ở tooling/tài liệu.
